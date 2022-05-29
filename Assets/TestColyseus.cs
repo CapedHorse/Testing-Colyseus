@@ -6,17 +6,35 @@ using UnityEngine.Networking;
 using TMPro;
 using Leguar.TotalJSON;
 using System.Net.Security;
+using UnityEngine.SceneManagement;
 
 public class TestColyseus : MonoBehaviour
 {
-    public GameObject exchangePanel, playPanel;
+    public static TestColyseus instance;
+    public GameObject exchangePanel, joiningPanel, playPanel, deadPanel;
     public TMP_InputField tokenInput;
-    public TextMeshProUGUI scoreText;
+    public TextMeshProUGUI scoreText, enemyScoreText;
 
-    JSON gameData;
+    JSON gameData, replayData;
 
+    //Gameplay variables
+    public bool enemyDead;
+    public int playerScore, enemyScore;
+
+    private void Awake()
+    {
+        if (instance == null)
+        {
+            instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+    }
     string accessToken, pubKey, match_id;
-    public void ExchangeTokenForPlay()
+    public void InitiateGame()
     {
         StartCoroutine(Exchange());
     }
@@ -47,7 +65,7 @@ public class TestColyseus : MonoBehaviour
                 pubKey = gameData.GetJSON("data").GetJSON("config").GetString("pub");
                 match_id = gameData.GetJSON("data").GetString("match_id");
                 Debug.Log("AccessToken: " + accessToken + " & pub key: " + pubKey);
-                StartPlaying();
+                JoinLobby();
             }
             else
                 Debug.Log("Error json data");
@@ -57,20 +75,24 @@ public class TestColyseus : MonoBehaviour
             //Debug.Log("Server Error");
         }
     }
-
+    
     public void StartPlaying()
     {
+        joiningPanel.SetActive(false);
         exchangePanel.SetActive(false);
         playPanel.SetActive(true);
 
         //some colyseus code here
-
+        
+        
     }
 
-    public void JoinRoom()
+    public void JoinLobby()
     {
-
+        joiningPanel.SetActive(true);
+        ColyseusClientManager.instance.JoiningRoom(match_id, accessToken, StartPlaying);
     }
+    
 
     private IEnumerator RequestReplayData()
     {
@@ -78,7 +100,32 @@ public class TestColyseus : MonoBehaviour
         yield return getReplay.SendWebRequest();
         if (getReplay.result == UnityWebRequest.Result.Success)
         {
-        Debug.Log(getReplay.downloadHandler.text);
+            Debug.Log(getReplay.downloadHandler.text);
         }
+    }
+
+    public void UpdateScore() //set in inspector
+    {
+        playerScore++;
+        scoreText.text = playerScore.ToString();
+        ColyseusClientManager.instance.SendScoreToServer(playerScore, pubKey);
+    }
+
+    public void Dead() //set in inspector
+    {
+        deadPanel.SetActive(true);
+        //the flow is -> Collect to a JSON first, seperti biasa. -> stringify & masukin ke JSON baru lagi yg bernama "replayData" (ini yg akan dibaca di server) -> stringify lagi, setor ke server.
+        JSON replayLog = new JSON(); 
+        replayLog.Add("log", "this is ceritanya replay log " + DateTime.Now);
+        replayLog.Add("lastScore", playerScore);
+
+        replayData.Add("replayData", replayLog.ToString());
+        
+        ColyseusClientManager.instance.NotifyDeadToServer(replayData.ToString(), pubKey);
+    }
+
+    public void Restart()
+    {
+        SceneManager.LoadScene(0);
     }
 }
