@@ -1,6 +1,5 @@
 var LibraryColyseus = {
-    $colyseusInstances: [],
-
+    $colyseusRoomInstances: [],
     InstallColyseus: function () {
         // colyseus.js@0.14.13 (@colyseus/schema 1.0.25)
         (function (global, factory) {
@@ -4969,128 +4968,155 @@ var LibraryColyseus = {
 //# sourceMappingURL=colyseus.js.map
 
     },   
+    InstallCryptor: function () {
+        // const crypto = require('crypto')
+
+        class Cryptor {
+            
+            constructor(key) {
+                this.key = key;
+            }
+
+            // constructor() {
+
+            // }
+            Encrypt(data) {
+                if (data == null) {
+                    throw new Error('Data is required')
+                }
+
+                try {
+                    // make the encrypter function
+                    const iv = crypto.randomBytes(16);
+                    const encrypter = crypto.createCipheriv("aes-256-cbc", this.key, iv);
+                    const base64IV = Buffer.from(iv).toString('base64')
+
+                    // encrypt the message
+                    // set the input encoding
+                    // and the output encoding
+                    let encryptedWord = encrypter.update(data, "utf8", "hex");
+
+                    // stop the encryption using
+                    // the final method and set
+                    // output encoding to hex
+                    encryptedWord += encrypter.final("hex");
+
+                    return Buffer.from(`${encryptedWord}|${Date.now()}|${base64IV}`).toString('base64')
+                } catch (e) {
+                    throw new Error(e)
+                }
+            }
+
+            Decrypt(data) {
+                try {
+                // make the decrypter function
+                const decrypter = crypto.createDecipheriv("aes-256-cbc", this.key, this.iv);
+
+                // decrypt the message
+                // set the input encoding
+                // and the output encoding
+                let decryptedWord = decrypter.update(data, "hex", "utf8");
+
+                // stop the decryption using
+                // the final method and set
+                // output encoding to utf8
+                decryptedWord += decrypter.final("utf8")
+
+                return decryptedWord
+                } catch (e) {
+                throw new Error(e);
+                }
+            }
+        }
+
+        module.exports = Cryptor
+    },
     //work
-    JoiningRoom: function (url, match_id, access_token) {
+    JoiningRoom: async function (url, match_id, access_token) {
         var path =  UTF8ToString(url);
         var game_token = UTF8ToString(access_token);
         var m_id = UTF8ToString(match_id);
+        // var key = UTF8ToString(pub_key);
 
         console.log(path+" " + game_token +" " + m_id);
 
-        const client = new Colyseus.Client(url);
-        
-        //tanpa await
-        client.joinById(m_id, { accessToken: game_token })        
-        //mungkin generate room client dulu baru proses room2an
-        
-        var token_bearer = "Bearer ".concat(game_token);
-        console.log(token_bearer);
+        // var cryptorIn = new Cryptor(key);
 
-        var socket = io(path, {
-            reconnectionDelayMax: 10000,
-            extraHeaders: {
-                'Authorization':  token_bearer               
-            },
-          }).connect();
-
-        console.log('emitting');
-          
-        socket.emit('match_lobby', {
-          'user_id': u_id,
-          'match_id': m_id,
-        });
-
-        console.log('emitted, now start listening');
-
-        socket.on('match_start', function (data) {
-            console.log('Match started', data);
-            window.unityInstance.SendMessage('GameplayManager', 'StartPlay'); //run function in unity    
-        }); 
-               
-        socket.on("match_error",function (error)
-        {
-            console.log("connection error " + error);
-        });
-
-        console.log("Emitted");
-
-        var instance = socketInstances.push(socket) - 1;
-        return instance;
+        const client = new Colyseus.Client(path);
+        console.log("awaiting join by id");
+        const room = await client.joinById(m_id, { accessToken: game_token });
+        console.log("await done?");
+        var roomInstance = colyseusRoomInstances.push(room) -1;
+        // colyseusRoomInstances.push( cryptorIn);
+        console.log ("room instance ", roomInstance);
+        window.unityInstance.SendMessage('ColyseusClientManager', 'JoinedRoom', roomInstance);
     },
-    
-    MatchUpdate: function (socketInstance, score) {
-        var socket = socketInstances[socketInstance];
 
-        socket.emit('match_update', {
-            'score': score,
-            'type': 'match_log',
+    TellServerReady: function (roomInstance) {
+        var room = colyseusRoomInstances[roomInstance];
+        console.log("room exist? ", room);
+        room.send("ready");
+
+        room.onMessage("gameover", function (message) {
+            console.log(`Gameover!`, message);
+            room.leave();
+            process.exit(0);
         });
 
+        room.state.players.onAdd = function (p, sessionId) {
+            console.log(`Player joined the room ${p.userId}`);
+      
+            p.onChange = function (changes) {
+              // if (p.userId !== player.user_id) {
+              if (p.dead) {
+                console.log(
+                  `${p.userId} reporting game over with last score: ${p.score}`
+                );
+              } else {
+                console.log(`${p.userId} score: ${p.score}`);
+                window.unityInstance.SendMessage('TestColyseus', 'UpdateEnemyScore', p.score);
+              }
+              // }
+            };
+        };
+
+        room.onMessage("error", console.log);
+
+        room.onMessage("start", function ()  {
+            console.log("Start the game!");
+            window.unityInstance.SendMessage('TestColyseus', 'StartPlaying');
+
+        });
+    },
+
+    
+    ScoreUpdate: function (roomInstance, score) {
+        var room = colyseusRoomInstances[roomInstance];
+        // var crptr = window.unityInstance.Cryptor.encrypt;
+        console.log("score ", score, " in string ", UTF8ToString(score));
+        room.send("score", UTF8ToString(score));// .Encrypt(UTF8ToString(score)));// UTF8ToString(score)); //score is already encrypted from c#
+        //invalid data? cannot emit already encrypted from server?
         console.log('emitted score');        
     },
 
-    ListenMatchUpdate: function(socketInstance) {
-        var socket = socketInstances[socketInstance];
-
-        console.log('is listening socket?',socket);
-
-        //listening every update
-        socket.on('match_update', function (data) {
-            console.log('score type listened ', data.type);
-
-            console.log('listening data? ', data);
-            //run function to update opponent score in the unity which is data.score
-
-            //get last score from enemy
-            if (data.type === 'match_result') {
-            
-                // when get last score from enemy, get las
-                console.log("match result from opponent??");
-                window.unityInstance.SendMessage('GameplayManager', 'EnemyIsOver');
-                console.log("enemy is over");         
-                
-                //start listening to replay data too
-                socket.on('match_replay', function (data) {
-                    console.log("Got match replay from user ", data.player.nickname, " the replay data is ",
-                    data.replay_data, "with ", data.replay_data.length, " last score: ", data.final_score);
-                    window.unityInstance.SendMessage('GameplayManager', 'GetMatchReplay', data.replay_data); //send replay data to game
-                });
-
-            } else if (data.type === 'match_log') {
-
-                console.log("not result, just log");  
-                var score = parseInt(data.score);
-                window.unityInstance.SendMessage('GameplayManager', 'UpdateOpponentScore', score);  
-            }                 
-
-            console.log('Updating opponent score');                    
-        });
+    GetNow: function () {
+        console.log("Getting now's date ",Date.now());
+        return UTF8ToString(Date.now());
     },
 
     //when player game over
-    MatchResult: function(socketInstance, last_score, replay_data) {
+    GameEnd: function(roomInstance, replay_data) {
 
-        var socket = socketInstances[socketInstance];
-        var score = parseInt(last_score);
+        var room = colyseusRoomInstances[roomInstance];
         var replay = UTF8ToString(replay_data);
+        // var crptr = colyseusRoomInstances[1];
 
-        console.log('last score from unity ', last_score, 'converted',score, 'and replay is ', replay);
-        console.log('is result socket?',socket);
+        console.log('replay is ', replay);
+        console.log('is result socket?',room);
 
-        //emit last score as match result, with replay data
-        socket.emit('match_update', {
-            'score': score,
-            'type': 'match_result',
-            'replay_data': replay
-        });             
-
-        //listening when match ended
-        socket.on('match_ended', function (MatchEnded) {
-            console.log('Game over');
-            socket.disconnect();
-        });
-
-        console.log('emitted match result with score ', score);
+        room.send("dead", UTF8ToString(replay_data)); //replay already encrypted from c#      crptr.Encrypt(replay));// 
+        
+        console.log('emitted match result');
     },    
 
     BackToApp: function (last_score)
@@ -5132,6 +5158,7 @@ var LibraryColyseus = {
 
 };
 
-autoAddDeps(LibrarySocketIo, '$colyseusInstances');
+autoAddDeps(LibraryColyseus, '$colyseusRoomInstances');
+// autoAddDeps(LibraryColyseus, '$cryptorInstance');
 
 mergeInto(LibraryManager.library, LibraryColyseus);

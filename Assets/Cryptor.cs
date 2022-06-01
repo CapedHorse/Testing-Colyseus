@@ -9,12 +9,15 @@ using System.Text;
 
 public class Cryptor
 {
-    public static string Encrypt(string plainText, string keyString)
+    public static string Encrypt(string plainText, string keyString, string dateNow)
     {
         byte[] cipherData;
         Aes aes = Aes.Create();
         aes.Key = Encoding.UTF8.GetBytes(keyString);
-        aes.GenerateIV();
+        //var randIv = new RNGCryptoServiceProvider();
+        //randIv.GetBytes(new byte[16]);
+        aes.GenerateIV(); //random iv generated
+        Debug.Log("iv length " + aes.IV.Length);
         aes.Mode = CipherMode.CBC;
         ICryptoTransform cipher = aes.CreateEncryptor(aes.Key, aes.IV);
 
@@ -24,7 +27,7 @@ public class Cryptor
             {
                 using (StreamWriter sw = new StreamWriter(cs))
                 {
-                    sw.Write(plainText);
+                    sw.Write(plainText); // cipher update
                 }
             }
 
@@ -32,9 +35,15 @@ public class Cryptor
         }
 
         byte[] combinedData = new byte[aes.IV.Length + cipherData.Length];
-        Array.Copy(aes.IV, 0, combinedData, 0, aes.IV.Length);
+        Array.Copy(aes.IV, 0, combinedData, 0, aes.IV.Length); //base41IV
         Array.Copy(cipherData, 0, combinedData, aes.IV.Length, cipherData.Length);
-        return Convert.ToBase64String(combinedData);
+        var encrypted = Convert.ToBase64String(combinedData);
+        var now = dateNow;
+        Debug.Log("date now in c# " + dateNow + " " + now);
+        var base64IV = Convert.ToBase64String(aes.IV);
+
+        return $"{encrypted }|{now}|{base64IV}";
+        //return Convert.ToBase64String(combinedData);
     }
 
     public static string Decrypt(string combinedString, string keyString)

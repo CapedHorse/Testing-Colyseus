@@ -1843,7 +1843,7 @@ GameObject:
   - component: {fileID: 917502196}
   - component: {fileID: 917502195}
   m_Layer: 0
-  m_Name: Colyseus Client Manager
+  m_Name: ColyseusClientManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1861,7 +1861,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9adcab71812df0a4abe6c7a5cf8f683a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _colyseusSettings: {fileID: 11400000, guid: e9c66623e9dbb8044a84b4bbe18a5ae2, type: 2}
   isWebSocket: 0
 --- !u!4 &917502196
 Transform:
@@ -3391,7 +3390,7 @@ GameObject:
   - component: {fileID: 1629674122}
   - component: {fileID: 1629674121}
   m_Layer: 0
-  m_Name: Test Colyseus
+  m_Name: TestColyseus
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
