@@ -161,7 +161,7 @@ namespace ColyseusTest
             player.TriggerAll();
         } */
         [DllImport("__Internal")]
-        private static extern string GetNow();
+        private static extern int GetNow();
 
         [DllImport("__Internal")]
         private static extern void ScoreUpdate(int roomInstance, string score);
@@ -172,7 +172,7 @@ namespace ColyseusTest
             Debug.Log("Score is " + score);
             //string must be in json then stringify
             stringedScoreJson.AddOrReplace("score", score);
-            var encrypted = Cryptor.Encrypt(stringedScoreJson.CreateString(), pubKey, GetNow()); //ga bisa pake cryptor saya, krn beda
+            var encrypted = Cryptor.Encrypt(stringedScoreJson.CreateString(), pubKey, GetNow().ToString()); //ga bisa pake cryptor saya, krn beda
             Debug.Log("C# Score before encrypted " + stringedScoreJson.CreateString() + " after encrypted " + encrypted);
             ScoreUpdate(roomInt, encrypted);
         }
@@ -186,7 +186,7 @@ namespace ColyseusTest
         private static extern void GameEnd(int roomInstance, string replay_data);
         public void NotifyDeadToServer(string replayData, string pubKey) //sending replay data
         {
-            var encrypted = Cryptor.Encrypt(replayData, pubKey, GetNow());
+            var encrypted = Cryptor.Encrypt(replayData, pubKey, GetNow().ToString());
             Debug.Log("C# Replay before encrypted " + replayData + " after encrypted " + encrypted);
             GameEnd(roomInt, encrypted);
         }

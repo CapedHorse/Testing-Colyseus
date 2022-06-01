@@ -30,19 +30,22 @@ public class Cryptor
                     sw.Write(plainText); // cipher update
                 }
             }
-
+            
             cipherData = ms.ToArray();
         }
-
-        byte[] combinedData = new byte[aes.IV.Length + cipherData.Length];
-        Array.Copy(aes.IV, 0, combinedData, 0, aes.IV.Length); //base41IV
-        Array.Copy(cipherData, 0, combinedData, aes.IV.Length, cipherData.Length);
-        var encrypted = Convert.ToBase64String(combinedData);
-        var now = dateNow;
-        Debug.Log("date now in c# " + dateNow + " " + now);
+        var utf8CipherData = Encoding.UTF8.GetString(cipherData, 0, cipherData.Length);
+        Debug.Log("CipherData " + utf8CipherData);
+        byte[] combinedData = new byte[aes.IV.Length + cipherData.Length]; //make the array for combined data, with the length of 
+        Array.Copy(aes.IV, 0, combinedData, 0, aes.IV.Length); //masukin iv bytes nya ke array tadi
+        Array.Copy(cipherData, 0, combinedData, aes.IV.Length, cipherData.Length); //lalu masukin cypherdata setelah iv nya, harusnya gak masukin ivnya?
+        var encrypted = Convert.ToBase64String(combinedData); //encryption datanya harus sama
         var base64IV = Convert.ToBase64String(aes.IV);
-
-        return $"{encrypted }|{now}|{base64IV}";
+        Debug.Log("date now in c# " + dateNow);
+        Debug.Log("encrypted " + encrypted);
+        Debug.Log("base64IV " + base64IV);
+        var encryption = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{utf8CipherData }|{dateNow}|{base64IV}"));
+        Debug.Log("encription " + encryption);
+        return encryption;
         //return Convert.ToBase64String(combinedData);
     }
 

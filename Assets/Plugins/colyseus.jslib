@@ -5101,7 +5101,7 @@ var LibraryColyseus = {
 
     GetNow: function () {
         console.log("Getting now's date ",Date.now());
-        return UTF8ToString(Date.now());
+        return Date.now();
     },
 
     //when player game over
