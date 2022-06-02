@@ -4968,69 +4968,6 @@ var LibraryColyseus = {
 //# sourceMappingURL=colyseus.js.map
 
     },   
-    InstallCryptor: function () {
-        // const crypto = require('crypto')
-
-        class Cryptor {
-            
-            constructor(key) {
-                this.key = key;
-            }
-
-            // constructor() {
-
-            // }
-            Encrypt(data) {
-                if (data == null) {
-                    throw new Error('Data is required')
-                }
-
-                try {
-                    // make the encrypter function
-                    const iv = crypto.randomBytes(16);
-                    const encrypter = crypto.createCipheriv("aes-256-cbc", this.key, iv);
-                    const base64IV = Buffer.from(iv).toString('base64')
-
-                    // encrypt the message
-                    // set the input encoding
-                    // and the output encoding
-                    let encryptedWord = encrypter.update(data, "utf8", "hex");
-
-                    // stop the encryption using
-                    // the final method and set
-                    // output encoding to hex
-                    encryptedWord += encrypter.final("hex");
-
-                    return Buffer.from(`${encryptedWord}|${Date.now()}|${base64IV}`).toString('base64')
-                } catch (e) {
-                    throw new Error(e)
-                }
-            }
-
-            Decrypt(data) {
-                try {
-                // make the decrypter function
-                const decrypter = crypto.createDecipheriv("aes-256-cbc", this.key, this.iv);
-
-                // decrypt the message
-                // set the input encoding
-                // and the output encoding
-                let decryptedWord = decrypter.update(data, "hex", "utf8");
-
-                // stop the decryption using
-                // the final method and set
-                // output encoding to utf8
-                decryptedWord += decrypter.final("utf8")
-
-                return decryptedWord
-                } catch (e) {
-                throw new Error(e);
-                }
-            }
-        }
-
-        module.exports = Cryptor
-    },
     //work
     JoiningRoom: async function (url, match_id, access_token) {
         var path =  UTF8ToString(url);
@@ -5052,11 +4989,11 @@ var LibraryColyseus = {
         window.unityInstance.SendMessage('ColyseusClientManager', 'JoinedRoom', roomInstance);
     },
 
-    TellServerReady: function (roomInstance) {
+    TellServerReady: function (roomInstance, user_id) {
         var room = colyseusRoomInstances[roomInstance];
         console.log("room exist? ", room);
         room.send("ready");
-
+        const u_id = UTF8ToString(user_id);
         room.onMessage("gameover", function (message) {
             console.log(`Gameover!`, message);
             room.leave();
@@ -5065,18 +5002,20 @@ var LibraryColyseus = {
 
         room.state.players.onAdd = function (p, sessionId) {
             console.log(`Player joined the room ${p.userId}`);
-      
+            
             p.onChange = function (changes) {
-              // if (p.userId !== player.user_id) {
-              if (p.dead) {
-                console.log(
-                  `${p.userId} reporting game over with last score: ${p.score}`
-                );
-              } else {
-                console.log(`${p.userId} score: ${p.score}`);
-                window.unityInstance.SendMessage('TestColyseus', 'UpdateEnemyScore', p.score);
+              if (u_id!== p.userId) { //kalau gak diginiin update 2 2 nya, so only listen that is not same uid
+                if (p.dead) {
+                    console.log(
+                    `${p.userId} reporting game over with last score: ${p.score}`
+                    );
+                    console.log("replay data is ", p.replayData);
+                } else {
+                    console.log(`${p.userId} score: ${p.score}`);
+                    if(p.userId)
+                    window.unityInstance.SendMessage('TestColyseus', 'UpdateEnemyScore', p.score);
+                }
               }
-              // }
             };
         };
 
@@ -5088,7 +5027,6 @@ var LibraryColyseus = {
 
         });
     },
-
     
     ScoreUpdate: function (roomInstance, score) {
         var room = colyseusRoomInstances[roomInstance];
@@ -5112,9 +5050,8 @@ var LibraryColyseus = {
         // var crptr = colyseusRoomInstances[1];
 
         console.log('replay is ', replay);
-        console.log('is result socket?',room);
 
-        room.send("dead", UTF8ToString(replay_data)); //replay already encrypted from c#      crptr.Encrypt(replay));// 
+        room.send("dead", UTF8ToString(replay)); //replay already encrypted from c#      crptr.Encrypt(replay));// 
         
         console.log('emitted match result');
     },    

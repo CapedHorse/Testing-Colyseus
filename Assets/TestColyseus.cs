@@ -36,6 +36,7 @@ namespace ColyseusTest
             }
         }
         string accessToken, pubKey, match_id;
+        public string userId;
         public void InitiateGame()
         {
             StartCoroutine(Exchange());
@@ -66,6 +67,7 @@ namespace ColyseusTest
                     accessToken = gameData.GetJSON("data").GetString("token");
                     pubKey = gameData.GetJSON("data").GetString("pub");
                     match_id = gameData.GetJSON("data").GetString("match_id");
+                    userId = gameData.GetJSON("data").GetJSON("player").GetString("user_id");
                     Debug.Log("AccessToken: " + accessToken + " & pub key: " + pubKey);
                     JoinLobby();
                 }
@@ -107,7 +109,7 @@ namespace ColyseusTest
             playerScore += int.Parse(scoreInput.text);
             scoreText.text = playerScore.ToString();
 
-            ColyseusClientManager.instance.SendScoreToServer(playerScore, pubKey);
+            ColyseusClientManager.instance.SendScoreToServer(int.Parse(scoreInput.text), pubKey);
         }
         public void UpdateEnemyScore(int score) //sendmessage'd by jslib
         {
@@ -118,15 +120,15 @@ namespace ColyseusTest
         public void Dead() //set in inspector
         {
             deadPanel.SetActive(true);
-            replayData = new JSON();
+
             //the flow is -> Collect to a JSON first, seperti biasa. -> stringify & masukin ke JSON baru lagi yg bernama "replayData" (ini yg akan dibaca di server) -> stringify lagi, setor ke server.
             JSON replayLog = new JSON();
             replayLog.Add("log", "this is ceritanya replay log " + DateTime.Now);
             replayLog.Add("lastScore", playerScore);
 
-            replayData.Add("replayData", replayLog);
 
-            ColyseusClientManager.instance.NotifyDeadToServer(replayData.CreateString(), pubKey);
+
+            ColyseusClientManager.instance.NotifyDeadToServer(replayLog, pubKey);
         }
 
         public void Restart() //set in inspector

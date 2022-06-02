@@ -78,7 +78,7 @@ namespace ColyseusTest
         [DllImport("__Internal")]
         private static extern void JoiningRoom(string url, string match_id, string access_token);
         [DllImport("__Internal")]
-        private static extern void TellServerReady(int roomInstance);
+        private static extern void TellServerReady(int roomInstance, string user_id);
         public void JoinRoom(string url, string match_id, string access_token)
         {
             JoiningRoom(url, match_id, access_token);
@@ -87,7 +87,7 @@ namespace ColyseusTest
         public void JoinedRoom(int room_int) //sendmessaged byjslib
         {
             roomInt = room_int;
-            TellServerReady(roomInt); //setelah ini akan disend message sama jslib
+            TellServerReady(roomInt, TestColyseus.instance.userId); //setelah ini akan disend message sama jslib
         }
 
 
@@ -184,10 +184,12 @@ namespace ColyseusTest
          */
         [DllImport("__Internal")]
         private static extern void GameEnd(int roomInstance, string replay_data);
-        public void NotifyDeadToServer(string replayData, string pubKey) //sending replay data
+        JSON replayData = new JSON();
+        public void NotifyDeadToServer(JSON replayLog, string pubKey) //sending replay data
         {
-            var encrypted = Cryptor.Encrypt(replayData, pubKey, GetNow().ToString());
-            Debug.Log("C# Replay before encrypted " + replayData + " after encrypted " + encrypted);
+            replayData.Add("replayData", replayLog);
+            var encrypted = Cryptor.Encrypt(replayData.CreateString(), pubKey, GetNow().ToString());
+            Debug.Log("C# Replay before encrypted " + replayData.CreateString() + " after encrypted " + encrypted);
             GameEnd(roomInt, encrypted);
         }
         /*

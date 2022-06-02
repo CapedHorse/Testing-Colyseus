@@ -9,38 +9,48 @@ using System.Text;
 
 public class Cryptor
 {
-    public static string Encrypt(string plainText, string keyString, string dateNow)
+    public static string Encrypt(string encryptedData, string keyString, string dateNow)
     {
         byte[] cipherData;
         Aes aes = Aes.Create();
-        aes.Key = Encoding.UTF8.GetBytes(keyString);
+        aes.KeySize = 256;
+        aes.Key = UTF8Encoding.UTF8.GetBytes(keyString);
+        Debug.Log("aes key " + keyString);
         //var randIv = new RNGCryptoServiceProvider();
         //randIv.GetBytes(new byte[16]);
         aes.GenerateIV(); //random iv generated
         Debug.Log("iv length " + aes.IV.Length);
-        aes.Mode = CipherMode.CBC;
+        aes.Mode = CipherMode.CBC; //sudah benar cbc
         ICryptoTransform cipher = aes.CreateEncryptor(aes.Key, aes.IV);
 
-        using (MemoryStream ms = new MemoryStream())
-        {
-            using (CryptoStream cs = new CryptoStream(ms, cipher, CryptoStreamMode.Write))
-            {
-                using (StreamWriter sw = new StreamWriter(cs))
-                {
-                    sw.Write(plainText); // cipher update
-                }
-            }
-            
-            cipherData = ms.ToArray();
-        }
-        Debug.Log("CipherData" + Convert.ToBase64String(cipherData));
-        byte[] combinedData = new byte[aes.IV.Length + cipherData.Length]; //make the array for combined data, with the length of 
-        Array.Copy(aes.IV, 0, combinedData, 0, aes.IV.Length); //masukin iv bytes nya ke array tadi
-        Array.Copy(cipherData, 0, combinedData, aes.IV.Length, cipherData.Length); //lalu masukin cypherdata setelah iv nya
-        var encrypted = Convert.ToBase64String(combinedData); //encryption datanya harus sama
+        //using (MemoryStream ms = new MemoryStream())
+        //{
+        //    using (CryptoStream cs = new CryptoStream(ms, cipher, CryptoStreamMode.Write))
+        //    {
+        //        using (StreamWriter sw = new StreamWriter(cs))
+        //        {
+        //            sw.Write(encryptedData); // cipher update
+        //        }
+        //    }
+
+        //    cipherData = ms.ToArray();
+        //}
+
+        //Debug.Log("CipherData " + Convert.ToBase64String(cipherData));
+        //byte[] combinedData = new byte[aes.IV.Length + cipherData.Length]; //make the array for combined data, with the length of 
+        //Array.Copy(aes.IV, 0, combinedData, 0, aes.IV.Length); //masukin iv bytes nya ke array tadi
+        //Array.Copy(cipherData, 0, combinedData, aes.IV.Length, cipherData.Length); //lalu masukin cypherdata setelah iv nya
+
+
+        Debug.Log(encryptedData);
+        var data = Encoding.UTF8.GetBytes(encryptedData);
+        byte[] dest = cipher.TransformFinalBlock(data, 0, data.Length);
+
+        var encrypted = BitConverter.ToString(dest); //to string (non base64)
+        encrypted = encrypted.Replace("-", ""); //to hex
         var base64IV = Convert.ToBase64String(aes.IV);
-        Debug.Log("date now in c# " + dateNow);
         Debug.Log("encrypted " + encrypted);
+        Debug.Log("date now in c# " + dateNow);
         Debug.Log("base64IV " + base64IV);
         var encryption = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{encrypted }|{dateNow}|{base64IV}"));
         Debug.Log("encription " + encryption);
